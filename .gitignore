@@ -13,3 +13,34 @@ canvas-fonts/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Debug / automation screenshots (step-by-step PNG captures)
+a[0-9]*.png
+b[0-9]*.png
+c[0-9]*.png
+e[0-9]*.png
+f[0-9]*.png
+g[0-9]*.png
+i[0-9]*.png
+j[0-9]*.png
+k[0-9]*.png
+fte[0-9]*.png
+step[0-9]*.png
+native_feed.png
+post_error.png
+
+# Legacy automation scripts (replaced by post_fte.py)
+auto_post.py
+auto_post2.py
+auto_post3.py
+edit_post.py
+edit_post2.py
+edit_post3.py
+find_start_post.py
+
+# Claude session data
+.claude/
