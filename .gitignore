@@ -32,6 +32,9 @@ fte[0-9]*.png
 step[0-9]*.png
 native_feed.png
 post_error.png
+p[0-9]*.png
+p_*.png
+launch_test.js
 
 # Legacy automation scripts (replaced by post_fte.py)
 auto_post.py

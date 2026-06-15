@@ -1,241 +1,238 @@
 """
-LinkedIn auto-post — Digital FTE: 10 Reasons AI Employees Win
-Uses pyautogui + pywinauto (same approach that worked in auto_post_final.py)
+LinkedIn Auto-Post — Digital FTE (with image)
+Fixes applied:
+  - Close any lingering file dialogs before starting
+  - Correct 'Start a post' coordinate (772, 198)
+  - Detect only NEW file dialog (ignores pre-existing ones)
+  - Escape any open post/preview panels first
 """
-import pyautogui
-import pyperclip
-import time
-import win32gui
-import win32con
+import pyautogui, pyperclip, time, win32gui, win32con
 
 pyautogui.FAILSAFE = False
-pyautogui.PAUSE = 0.3
+pyautogui.PAUSE = 0.25
 
 IMAGE_PATH = r"D:\syeda Gulzar Bano\Quarter5-Assignment\Q5-Assignment\fte_graphic.png"
-SDIR = r"D:\syeda Gulzar Bano\Quarter5-Assignment\Q5-Assignment"
+SDIR       = r"D:\syeda Gulzar Bano\Quarter5-Assignment\Q5-Assignment"
 
-POST_TEXT = """میں نے پچھلے مہینے اپنا پہلا AI ملازم رکھا۔
-$1,200/ماہ پر — 168 گھنٹے فی ہفتہ کام۔
-میرا بہترین انسانی ملازم $5,000/ماہ لیتا ہے — اور صرف 40 گھنٹے دیتا ہے۔
+POST_TEXT = """I hired my first AI employee last month.
+$1,200/month. 168 hours a week. Zero sick days.
+My best human hire costs $5,000/month and works 40 hours.
 
-یہ حساب تکلیف دہ ہے۔ Agent Factory کے یہ 10 نکات نے میری سوچ بدل دی:
+The math is uncomfortable. Here are 10 points from the Agent Factory that changed how I think:
 
-1/ 168 گھنٹے بمقابلہ 40
-Digital FTE کبھی نہیں سوتا، چھٹی نہیں لیتا، تھکتا نہیں۔ ہفتے میں 4.2 گنا زیادہ آؤٹ پٹ — بغیر اوور ٹائم کے۔
+1/ 168 hrs vs 40 hrs
+A Digital FTE never sleeps, never vacations, never burns out. 4.2x the output in the same week - with zero overtime.
 
-2/ $500–2K بمقابلہ $4K–8K+/ماہ
-اپنا بہترین عمل ایک بار AI agent میں ڈھالیں۔ وہ بغیر رکے چلتا رہے گا۔
+2/ $500-2K vs $4K-8K+/month
+Build your best process into an AI agent once. It runs indefinitely at a fraction of the cost.
 
-3/ سالانہ 9,000 گھنٹے بمقابلہ 2,000
-ایک Digital FTE کا ایک سال = 4.5 انسانی سال کا کام۔ startup کی رفتار سے۔
+3/ 9,000 annual hours vs 2,000
+One year of a Digital FTE equals 4.5 human-years of output. At startup speed.
 
-4/ 99%+ consistency بمقابلہ 85–95%
-انسانوں کے اچھے اور برے دن ہوتے ہیں۔ Digital FTE رات 3 بجے بھی وہی معیار دیتا ہے جو صبح 9 بجے۔
+4/ 99%+ consistency vs 85-95%
+Humans have good days and bad days. A Digital FTE delivers the same quality at 3am that it does at 9am.
 
-5/ 10-80-10 کا اصول
-انسان: intent (10%) → AI: execute (80%) → انسان: verify (10%)۔
-آپ replace نہیں ہوتے — promote ہوتے ہیں۔
+5/ The 10-80-10 Rule
+Humans set intent (10%) -> AI executes (80%) -> Humans verify (10%).
+You are not replaced. You are promoted.
 
-6/ فوری cloning بمقابلہ مہینوں کی hiring
-کوئی workflow کام کر رہا ہے؟ منٹوں میں 10 agents بنائیں — سہ ماہیوں میں نہیں۔
+6/ Instant cloning vs months of hiring
+Found a workflow that works? Clone it across 10 agents in minutes, not quarters.
 
 7/ Spec-Driven Development
-ایک بار لکھیں، ہمیشہ کے لیے deploy کریں۔ آپ کی expertise ایک recipe بنتی ہے — جو آپ کے سوتے وقت چلتی ہے۔
+Write your expertise once, deploy it forever. Your knowledge becomes a recipe that runs while you sleep.
 
-8/ صفر overhead اخراجات
-نہ benefits، نہ HR، نہ sick leave، نہ performance reviews۔ صرف outcomes۔
+8/ Zero overhead costs
+No benefits. No HR. No sick leave. No performance reviews. Just outcomes.
 
-9/ SaaS سے Agent Era تک
-Software نے seats بیچیں۔ AI outcomes بیچتا ہے۔
-کل کا business model آج آ چکا ہے۔
+9/ From SaaS to the Agent Era
+Software sold you seats. AI sells you outcomes.
+The business model of tomorrow is already here.
 
-10/ پانچ Maturity Levels
-Level 1: AI Awareness (10-20% فائدہ)۔
-Level 5: AI-First Enterprise (10x productivity)۔
-Digital FTEs وہ پل ہیں جو آپ کو اوپر لے جاتے ہیں۔
+10/ Five Maturity Levels
+Level 1 is AI Awareness (10-20% gains).
+Level 5 is AI-First Enterprise (10x productivity).
+Digital FTEs are the bridge that gets you there.
 
-جو کمپنیاں levels 3-5 پہلے سمجھ لیں گی — وہ صرف تیز نہیں چلیں گی۔
-وہ ایک مختلف category میں ہوں گی۔
+Companies that master levels 3-5 first will not just move faster.
+They will operate in an entirely different category.
 
-آپ کی organization ابھی کس level پر ہے؟
+Which level is your organization at right now?
 
-Sir Anas کے ساتھ سیکھ رہی ہوں @GIAIC | Panaversity Agent Factory
+Learning with Sir Anas at GIAIC | Panaversity Agent Factory
 
 #AgentFactory #DigitalFTE #AIEmployee #FutureOfWork #GIAIC #Panaversity #AIAgents #LearnInPublic #10x #AIFirst"""
 
 
-def log(msg):
-    print(f"[FTE-POST] {msg}", flush=True)
+# ── helpers ──────────────────────────────────────────────────────────────────
 
+def log(msg):
+    print(f"[POST] {msg}", flush=True)
 
 def ss(name):
-    path = f"{SDIR}\\{name}.png"
-    pyautogui.screenshot(path)
+    pyautogui.screenshot(f"{SDIR}\\{name}.png")
     log(f"  Screenshot: {name}.png")
 
+def all_dialog_hwnds():
+    """Return set of hwnds of all currently open file-picker dialogs."""
+    TITLES = ('open', 'select', 'choose', 'upload', 'file', 'openclaw')
+    found = set()
+    def cb(h, _):
+        if win32gui.IsWindowVisible(h):
+            t = win32gui.GetWindowText(h).lower()
+            if any(k in t for k in TITLES):
+                found.add(h)
+    win32gui.EnumWindows(cb, None)
+    return found
+
+def close_old_dialogs():
+    """Close any lingering file-picker / openclaw dialogs."""
+    hwnds = all_dialog_hwnds()
+    for h in hwnds:
+        title = win32gui.GetWindowText(h)
+        log(f"  Closing old dialog: '{title}'")
+        win32gui.PostMessage(h, win32con.WM_CLOSE, 0, 0)
+    if hwnds:
+        time.sleep(1)
 
 def focus_chrome():
-    target = None
-    def cb(hwnd, _):
-        nonlocal target
-        if win32gui.IsWindowVisible(hwnd):
-            t = win32gui.GetWindowText(hwnd)
-            if 'LinkedIn' in t or 'Chrome' in t:
-                target = hwnd
+    """Bring the LinkedIn Feed Chrome window to front."""
+    best = None
+    def cb(h, _):
+        nonlocal best
+        if not win32gui.IsWindowVisible(h):
+            return
+        t = win32gui.GetWindowText(h)
+        if 'Feed' in t and 'LinkedIn' in t:
+            best = h
+        elif best is None and ('LinkedIn' in t or 'Chrome' in t):
+            best = h
     win32gui.EnumWindows(cb, None)
-    if target:
-        win32gui.ShowWindow(target, win32con.SW_MAXIMIZE)
-        win32gui.SetForegroundWindow(target)
+    if best:
+        win32gui.ShowWindow(best, win32con.SW_MAXIMIZE)
+        win32gui.SetForegroundWindow(best)
         time.sleep(1.5)
 
+def wait_for_new_dialog(before_hwnds, timeout=10):
+    """
+    Wait until a file-picker dialog appears that was NOT in before_hwnds.
+    Returns its hwnd or None on timeout.
+    """
+    TITLES = ('open', 'select', 'choose', 'upload', 'file')
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        current = set()
+        def cb(h, _):
+            if win32gui.IsWindowVisible(h):
+                t = win32gui.GetWindowText(h).lower()
+                if any(k in t for k in TITLES):
+                    current.add(h)
+        win32gui.EnumWindows(cb, None)
+        new = current - before_hwnds
+        if new:
+            hwnd = next(iter(new))
+            title = win32gui.GetWindowText(hwnd)
+            log(f"  New file dialog: '{title}'")
+            win32gui.SetForegroundWindow(hwnd)
+            time.sleep(0.6)
+            return hwnd
+        time.sleep(0.3)
+    log("  WARNING: no new file dialog appeared")
+    return None
 
-def find_button_center(btn_name):
-    try:
-        from pywinauto import Application
-        app = Application(backend='uia').connect(title_re='.*LinkedIn.*')
-        win = app.top_window()
-        btn = win.child_window(title=btn_name, control_type='Button')
-        r = btn.rectangle()
-        return ((r.left + r.right) // 2, (r.top + r.bottom) // 2)
-    except Exception as e:
-        log(f"  UIA find '{btn_name}' failed: {e}")
-        return None
 
+# ── main ─────────────────────────────────────────────────────────────────────
 
 def main():
-    log("=== LinkedIn FTE Post ===")
+    log("=== LinkedIn Auto-Post with Image ===")
 
+    # 0. Close old lingering dialogs + escape any open panels
+    log("Step 0: Cleanup — close old dialogs & escape open panels")
+    close_old_dialogs()
     focus_chrome()
-    time.sleep(1)
-
-    log("Step 1: Navigate to LinkedIn feed...")
-    pyautogui.hotkey('ctrl', 'l')
+    pyautogui.press('escape')
     time.sleep(0.5)
+    pyautogui.press('escape')
+    time.sleep(0.5)
+
+    # 1. Navigate to LinkedIn feed
+    log("Step 1: Navigate to linkedin.com/feed/")
+    pyautogui.hotkey('ctrl', 'l')
+    time.sleep(0.4)
     pyautogui.hotkey('ctrl', 'a')
-    pyautogui.typewrite('linkedin.com/feed/', interval=0.04)
+    pyautogui.write('linkedin.com/feed/', interval=0.03)
     pyautogui.press('enter')
     time.sleep(5)
     pyautogui.hotkey('ctrl', 'Home')
-    time.sleep(1)
-    ss("fte0_feed")
+    time.sleep(1.5)
+    ss("p0_feed")
 
-    log("Step 2: Clicking 'Start a post' at (772, 198)...")
-    pyautogui.moveTo(772, 198, duration=0.4)
-    time.sleep(0.3)
+    # 2. Click "Start a post" — correct coordinate (772, 198)
+    log("Step 2: Click 'Start a post' at (772, 198)")
     pyautogui.click(772, 198)
     time.sleep(3)
-    ss("fte1_modal")
+    ss("p1_modal")
 
-    log("Step 3: Finding text area in modal...")
-    text_area_coords = None
-    try:
-        from pywinauto import Application
-        app = Application(backend='uia').connect(title_re='.*LinkedIn.*')
-        win = app.top_window()
-        for title in ['Text editor for creating content', 'Start a post', 'What do you want to talk about?']:
-            try:
-                elem = win.child_window(title=title, control_type='Edit')
-                r = elem.rectangle()
-                text_area_coords = ((r.left + r.right) // 2, (r.top + r.bottom) // 2)
-                log(f"  Found text area '{title}' at {text_area_coords}")
-                break
-            except Exception:
-                pass
-        if not text_area_coords:
-            try:
-                elem = win.child_window(control_type='Document')
-                r = elem.rectangle()
-                text_area_coords = ((r.left + r.right) // 2, (r.top + r.bottom) // 2)
-                log(f"  Found Document control at {text_area_coords}")
-            except Exception:
-                pass
-    except Exception as e:
-        log(f"  UIA text area search failed: {e}")
-
-    if not text_area_coords:
-        text_area_coords = (772, 380)
-        log(f"  Using fallback text area coords: {text_area_coords}")
-
-    log(f"Step 4: Clicking text area at {text_area_coords}...")
-    pyautogui.click(text_area_coords[0], text_area_coords[1])
+    # 3. Click inside text area and paste post content
+    log("Step 3: Paste post text")
+    pyautogui.click(728, 320)
     time.sleep(0.6)
-
-    log("Step 5: Pasting post text...")
     pyperclip.copy(POST_TEXT)
-    time.sleep(0.3)
     pyautogui.hotkey('ctrl', 'v')
     time.sleep(2.5)
-    ss("fte2_text")
+    ss("p2_text")
 
-    log("Step 6: Finding photo/media button...")
-    photo_coords = None
-    try:
-        from pywinauto import Application
-        app = Application(backend='uia').connect(title_re='.*LinkedIn.*')
-        win = app.top_window()
-        for name in ['Add media', 'Add a photo', 'Photo', 'Media', 'Add photos/videos']:
-            try:
-                elem = win.child_window(title=name, control_type='Button')
-                r = elem.rectangle()
-                photo_coords = ((r.left + r.right) // 2, (r.top + r.bottom) // 2)
-                log(f"  Found photo button '{name}' at {photo_coords}")
-                break
-            except Exception:
-                pass
-    except Exception as e:
-        log(f"  UIA photo button search failed: {e}")
+    # 4. Snapshot existing dialogs, then click photo button
+    log("Step 4: Click photo button (tracking pre-existing dialogs)")
+    before = all_dialog_hwnds()
+    pyautogui.click(585, 555)
+    time.sleep(1.5)
+    ss("p3_photo_btn")
 
-    if not photo_coords:
-        photo_coords = (556, 660)
-        log(f"  Using fallback photo coords: {photo_coords}")
+    # 5. Wait for the NEW file dialog and paste image path into it
+    log("Step 5: Waiting for new file dialog...")
+    dlg = wait_for_new_dialog(before, timeout=10)
 
-    log(f"Step 7: Clicking photo button at {photo_coords}...")
-    pyautogui.moveTo(photo_coords[0], photo_coords[1], duration=0.4)
-    time.sleep(0.3)
-    ss("fte3_before_photo")
-    pyautogui.click(photo_coords[0], photo_coords[1])
-    time.sleep(3)
-    ss("fte4_after_photo")
-
-    log("Step 8: Handling file dialog — pasting image path...")
     pyperclip.copy(IMAGE_PATH)
-    time.sleep(0.4)
     pyautogui.hotkey('ctrl', 'a')
     time.sleep(0.2)
     pyautogui.hotkey('ctrl', 'v')
-    time.sleep(0.3)
-    ss("fte5_file_path")
+    time.sleep(0.4)
+    ss("p4_path_entered")
     pyautogui.press('enter')
-    time.sleep(5)
-    ss("fte6_image_loaded")
+    time.sleep(7)
+    ss("p5_image_loaded")
 
-    log("Step 9: Looking for Next button...")
-    next_coords = find_button_center('Next')
-    if next_coords:
-        log(f"  Clicking Next at {next_coords}")
-        pyautogui.click(next_coords[0], next_coords[1])
-        time.sleep(2)
-    else:
-        log("  No Next button found, trying (1150, 185)...")
-        pyautogui.click(1150, 185)
-        time.sleep(2)
-    ss("fte7_after_next")
+    # 6. Bring Chrome back to focus (file dialog may have shifted focus)
+    focus_chrome()
+    time.sleep(1)
 
-    log("Step 10: Looking for Post button...")
-    post_coords = find_button_center('Post')
-    if post_coords:
-        log(f"  Clicking Post at {post_coords}")
-        pyautogui.click(post_coords[0], post_coords[1])
-    else:
-        log("  No Post button found, trying (900, 655)...")
-        pyautogui.click(900, 655)
+    # 7. Click "Next" if image-preview/caption screen appeared
+    log("Step 6: Looking for Next button")
+    for coord in [(1025, 185), (900, 185), (1025, 660), (900, 660)]:
+        px = pyautogui.pixel(coord[0], coord[1])
+        # blue button: R<100, G<150, B>150
+        if px[0] < 100 and px[2] > 150:
+            log(f"  Blue pixel at {coord} -> clicking Next")
+            pyautogui.click(coord[0], coord[1])
+            time.sleep(2.5)
+            break
+    ss("p6_after_next")
 
-    time.sleep(8)
-    ss("fte8_final")
-    log("=== DONE! Check fte8_final.png ===")
+    # 8. Click Post button
+    log("Step 7: Clicking Post button")
+    for coord in [(1014, 622), (1014, 640), (900, 622)]:
+        px = pyautogui.pixel(coord[0], coord[1])
+        if px[0] < 100 and px[2] > 150:
+            log(f"  Blue pixel at {coord} -> clicking Post")
+            pyautogui.click(coord[0], coord[1])
+            time.sleep(7)
+            break
+    ss("p7_posted")
+    log("=== Done! Check p7_posted.png ===")
 
 
 if __name__ == "__main__":
-    log("Starting in 3 seconds — switch to Chrome!")
+    log("Starting in 3 seconds — switch to Chrome now!")
     time.sleep(3)
     main()

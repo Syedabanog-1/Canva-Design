@@ -1,280 +1,242 @@
-const { chromium } = require('playwright');
-const { spawn } = require('child_process');
+/**
+ * LinkedIn Auto-Post — Playwright CDP
+ * Uses high-level Playwright locators (not raw page.evaluate for clicks)
+ * Clipboard-based paste for reliable Urdu/Unicode text insertion
+ */
+const fs   = require('fs');
+const path = require('path');
+const http = require('http');
 
-const IMAGE_PATH = 'D:\\syeda Gulzar Bano\\Quarter5-Assignment\\Q5-Assignment\\fte_graphic.png';
+const BASE = 'D:\\syeda Gulzar Bano\\Quarter5-Assignment\\Q5-Assignment';
+const PORT = 9222;
 
-const POST_TEXT = `میں نے پچھلے مہینے اپنا پہلا AI ملازم رکھا۔
-$1,200/ماہ پر — 168 گھنٹے فی ہفتہ کام۔
-میرا بہترین انسانی ملازم $5,000/ماہ لیتا ہے — اور صرف 40 گھنٹے دیتا ہے۔
+// ── Load config ───────────────────────────────────────────────────────────────
+const configPath = process.argv[2] || path.join(BASE, 'post_config.json');
+if (!fs.existsSync(configPath)) {
+  console.error(`[POST] ERROR: Config not found: ${configPath}`); process.exit(1);
+}
+const cfg        = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+const POST_TEXT  = (cfg.text  || '').trim();
+const IMAGE_PATH = (cfg.image || '').trim() || null;
+if (!POST_TEXT) { console.error('[POST] ERROR: text empty.'); process.exit(1); }
+console.log(`[POST] Text: ${POST_TEXT.length} chars | Image: ${IMAGE_PATH || 'none'}`);
 
-یہ حساب تکلیف دہ ہے۔ Agent Factory کے یہ 10 نکات نے میری سوچ بدل دی:
+// ── Helpers ───────────────────────────────────────────────────────────────────
+async function ss(page, name) {
+  try {
+    await page.screenshot({ path: path.join(BASE, `${name}.png`), timeout: 10000 });
+    console.log(`[POST]   Screenshot: ${name}.png`);
+  } catch (e) { console.log(`[POST]   Screenshot ${name} failed: ${e.message}`); }
+}
 
-1/ 168 گھنٹے بمقابلہ 40
-Digital FTE کبھی نہیں سوتا، چھٹی نہیں لیتا، تھکتا نہیں۔ ہفتے میں 4.2 گنا زیادہ آؤٹ پٹ — بغیر اوور ٹائم کے۔
-
-2/ $500–2K بمقابلہ $4K–8K+/ماہ
-اپنا بہترین عمل ایک بار AI agent میں ڈھالیں۔ وہ بغیر رکے چلتا رہے گا۔
-
-3/ سالانہ 9,000 گھنٹے بمقابلہ 2,000
-ایک Digital FTE کا ایک سال = 4.5 انسانی سال کا کام۔ startup کی رفتار سے۔
-
-4/ 99%+ consistency بمقابلہ 85–95%
-انسانوں کے اچھے اور برے دن ہوتے ہیں۔ Digital FTE رات 3 بجے بھی وہی معیار دیتا ہے جو صبح 9 بجے۔
-
-5/ 10-80-10 کا اصول
-انسان: intent (10%) → AI: execute (80%) → انسان: verify (10%)۔
-آپ replace نہیں ہوتے — promote ہوتے ہیں۔
-
-6/ فوری cloning بمقابلہ مہینوں کی hiring
-کوئی workflow کام کر رہا ہے؟ منٹوں میں 10 agents بنائیں — نہ کہ سہ ماہیوں میں۔
-
-7/ Spec-Driven Development
-ایک بار لکھیں، ہمیشہ کے لیے deploy کریں۔ آپ کی expertise ایک recipe بنتی ہے — جو آپ کے سوتے وقت چلتی ہے۔
-
-8/ صفر overhead اخراجات
-نہ benefits، نہ HR، نہ sick leave، نہ performance reviews۔ صرف outcomes۔
-
-9/ SaaS سے Agent Era تک
-Software نے seats بیچی۔ AI outcomes بیچتا ہے۔
-کل کا business model آج آ چکا ہے۔
-
-10/ پانچ Maturity Levels
-Level 1: AI Awareness (10-20% فائدہ)۔
-Level 5: AI-First Enterprise (10x productivity)۔
-Digital FTEs وہ پل ہیں جو آپ کو اوپر لے جاتے ہیں۔
-
-جو کمپنیاں levels 3-5 پہلے سمجھ لیں گی — وہ صرف تیز نہیں چلیں گی۔
-وہ ایک مختلف category میں ہوں گی۔
-
-آپ کی organization ابھی کس level پر ہے؟
-
-Sir Anas کے ساتھ سیکھ رہی ہوں @GIAIC | Panaversity Agent Factory
-
-#AgentFactory #DigitalFTE #AIEmployee #FutureOfWork #GIAIC #Panaversity #AIAgents #LearnInPublic #10x #AIFirst`;
-
-async function waitForChrome(port, maxWait = 15000) {
-  const http = require('http');
-  const start = Date.now();
-  while (Date.now() - start < maxWait) {
+async function cdpReady(port, ms = 3000) {
+  const t = Date.now();
+  while (Date.now() - t < ms) {
     try {
-      await new Promise((resolve, reject) => {
-        http.get(`http://localhost:${port}/json/version`, (res) => {
-          let data = '';
-          res.on('data', d => data += d);
-          res.on('end', () => resolve(data));
-        }).on('error', reject);
-      });
+      await new Promise((ok, ko) => http.get(`http://localhost:${port}/json/version`,
+        r => { r.resume(); r.on('end', ok); }).on('error', ko));
       return true;
-    } catch (e) {
-      await new Promise(r => setTimeout(r, 500));
-    }
+    } catch { await new Promise(r => setTimeout(r, 400)); }
   }
   return false;
 }
 
+// ── Main ──────────────────────────────────────────────────────────────────────
 (async () => {
-  const PORT = 9222;
-  const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-  const PROFILE = 'C:\\Users\\ThinK Pad\\AppData\\Local\\Google\\Chrome\\User Data';
+  const chromium = require('playwright').chromium;
 
-  // Kill any existing Chrome first (needed to add --remote-debugging-port)
-  console.log('Closing any existing Chrome instances...');
-  try {
-    spawn('taskkill', ['/F', '/IM', 'chrome.exe'], { stdio: 'ignore' });
-  } catch (e) { /* ignore if not running */ }
-  await new Promise(r => setTimeout(r, 2500));
-
-  console.log('Launching Chrome with remote debugging on port', PORT);
-  const chromeProc = spawn(CHROME, [
-    `--remote-debugging-port=${PORT}`,
-    `--user-data-dir=${PROFILE}`,
-    '--profile-directory=Default',
-    '--start-maximized',
-    '--no-first-run',
-    '--no-default-browser-check',
-    'https://www.linkedin.com/feed/'
-  ], { detached: true, stdio: 'ignore' });
-  chromeProc.unref();
-
-  console.log('Waiting for Chrome to be ready...');
-  const ready = await waitForChrome(PORT, 35000);
-  if (!ready) throw new Error('Chrome did not start. Try running: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --remote-debugging-port=9222');
-  console.log('Chrome ready. Connecting via CDP...');
+  if (!(await cdpReady(PORT, 5000))) {
+    console.error('[POST] ERROR: Chrome not on port 9222. Run launch_chrome_debug.bat first.');
+    process.exit(1);
+  }
 
   const browser = await chromium.connectOverCDP(`http://localhost:${PORT}`);
-  const contexts = browser.contexts();
-  const context = contexts[0];
-  const pages = context.pages();
+  const context = browser.contexts()[0];
+  let page = context.pages().find(p => p.url().includes('linkedin')) || context.pages()[0];
+  if (!page) page = await context.newPage();
 
-  let page = pages.find(p => p.url().includes('linkedin')) || pages[0];
-  if (!page) {
-    page = await context.newPage();
-    await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'load', timeout: 60000 });
-  }
-
+  // 1. Go to feed
+  console.log('[POST] Navigating to LinkedIn feed...');
+  await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.bringToFront();
   await page.waitForTimeout(3000);
+
+  // Dismiss any dialogs (Restore pages, cookie banners)
+  await page.evaluate(() => {
+    // Close any open popups/modals by pressing Escape
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  });
+  await page.waitForTimeout(800);
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(800);
+  await ss(page, 'p0_feed');
 
-  const url = page.url();
-  console.log('Current URL:', url);
-  await page.screenshot({ path: 'D:\\syeda Gulzar Bano\\Quarter5-Assignment\\Q5-Assignment\\p0_start.png' });
+  if (page.url().includes('/login') || page.url().includes('/uas/')) {
+    console.error('[POST] ERROR: Not logged in. Please log in first.'); process.exit(1);
+  }
+  console.log('[POST] Logged in ✓');
 
-  if (!url.includes('linkedin.com/feed')) {
-    throw new Error('Not on LinkedIn feed. URL: ' + url);
+  // 2. Click "Start a post" — use Playwright locators (reliable)
+  console.log('[POST] Clicking "Start a post"...');
+
+  // Try multiple strategies
+  let modalOpened = false;
+
+  // Strategy A: click the share-box trigger button by class
+  try {
+    await page.locator('.share-box-feed-entry__trigger').first().click({ timeout: 5000 });
+    modalOpened = true;
+    console.log('[POST]   via .share-box-feed-entry__trigger');
+  } catch {}
+
+  // Strategy B: click by exact text
+  if (!modalOpened) {
+    try {
+      await page.getByText('Start a post', { exact: true }).first().click({ timeout: 5000 });
+      modalOpened = true;
+      console.log('[POST]   via text "Start a post"');
+    } catch {}
   }
 
-  console.log('Logged in! Proceeding to post...');
-
-  // Find "Start a post" button
-  const startCoords = await page.evaluate(() => {
-    const sels = [
-      'button.share-box-feed-entry__trigger',
-      '.share-creation-state__trigger',
-      'button[aria-label*="post"]',
-      'button[aria-label*="Post"]'
-    ];
-    for (const sel of sels) {
-      const el = document.querySelector(sel);
-      if (el) {
-        const r = el.getBoundingClientRect();
-        if (r.width > 0) return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-      }
-    }
-    for (const el of document.querySelectorAll('button, [role="button"]')) {
-      if (el.textContent.trim() === 'Start a post') {
-        const r = el.getBoundingClientRect();
-        if (r.width > 0) return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-      }
-    }
-    return null;
-  });
-
-  console.log('Start post button:', startCoords);
-  if (startCoords) {
-    await page.mouse.click(startCoords.x, startCoords.y);
-  } else {
-    await page.mouse.click(620, 185);
+  // Strategy C: click the placeholder input area
+  if (!modalOpened) {
+    try {
+      await page.locator('[placeholder*="post"], [placeholder*="Post"]').first().click({ timeout: 5000 });
+      modalOpened = true;
+      console.log('[POST]   via placeholder');
+    } catch {}
   }
+
+  if (!modalOpened) { await ss(page, 'p1_error'); throw new Error('Could not open post modal'); }
+
+  // Wait for the post composer modal
   await page.waitForTimeout(3000);
-  await page.screenshot({ path: 'D:\\syeda Gulzar Bano\\Quarter5-Assignment\\Q5-Assignment\\p1_modal.png' });
+  await ss(page, 'p1_modal');
 
-  // Paste post content
-  const editorCoords = await page.evaluate(() => {
-    const sels = [
-      '.ql-editor[contenteditable="true"]',
-      'div[role="textbox"][contenteditable="true"]',
-      '[contenteditable="true"]'
-    ];
-    for (const sel of sels) {
-      const el = document.querySelector(sel);
-      if (el) {
-        const r = el.getBoundingClientRect();
-        if (r.width > 100) return { x: r.x + r.width / 2, y: r.y + 40 };
-      }
-    }
-    return null;
-  });
+  // 3. Fill text via clipboard paste (works for Urdu/any script)
+  console.log('[POST] Pasting post text via clipboard...');
 
-  console.log('Editor coords:', editorCoords);
-  if (editorCoords) {
-    await page.mouse.click(editorCoords.x, editorCoords.y);
+  // Click the contenteditable editor in the modal
+  const editorLoc = page.locator('.ql-editor[contenteditable="true"], div[role="textbox"][contenteditable="true"], [contenteditable="true"]').first();
+
+  try {
+    await editorLoc.waitFor({ timeout: 8000 });
+    await editorLoc.click({ timeout: 5000 });
     await page.waitForTimeout(500);
-    await page.evaluate((text) => navigator.clipboard.writeText(text), POST_TEXT);
+
+    // Write text via clipboard (works for all languages including Urdu)
+    await page.evaluate(async (txt) => {
+      try {
+        await navigator.clipboard.writeText(txt);
+      } catch {
+        // Fallback: use a hidden textarea to set clipboard
+        const ta = document.createElement('textarea');
+        ta.value = txt;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+    }, POST_TEXT);
+
+    await page.keyboard.press('Control+a');
+    await page.waitForTimeout(200);
     await page.keyboard.press('Control+v');
+    await page.waitForTimeout(2500);
+    console.log('[POST]   Text pasted via clipboard ✓');
+  } catch (e) {
+    console.log(`[POST]   Editor error: ${e.message}`);
+    // Last resort: type directly (slow)
+    await page.keyboard.type(POST_TEXT, { delay: 0 });
     await page.waitForTimeout(2000);
   }
 
-  await page.screenshot({ path: 'D:\\syeda Gulzar Bano\\Quarter5-Assignment\\Q5-Assignment\\p2_text.png' });
-  console.log('Post text pasted.');
+  await ss(page, 'p2_text');
 
-  // Upload image
-  const photoCoords = await page.evaluate(() => {
-    const sels = [
-      'button[aria-label*="Photo"]',
-      'button[aria-label*="photo"]',
-      'button[aria-label*="Image"]',
-      'button[aria-label*="Media"]',
-      'button[aria-label*="Add a photo"]',
+  // 4. Upload image (optional)
+  if (IMAGE_PATH && fs.existsSync(IMAGE_PATH)) {
+    console.log('[POST] Uploading image:', path.basename(IMAGE_PATH));
+
+    // Click photo/media button using Playwright locators
+    const photoBtns = [
+      page.getByLabel(/photo/i).first(),
+      page.getByLabel(/media/i).first(),
+      page.getByLabel(/image/i).first(),
+      page.locator('button[aria-label*="Photo"], button[aria-label*="photo"], button[aria-label*="Media"]').first(),
     ];
-    for (const sel of sels) {
-      const el = document.querySelector(sel);
-      if (el) {
-        const r = el.getBoundingClientRect();
-        if (r.width > 0) return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-      }
-    }
-    // Fallback: search by icon label or data-control-name
-    for (const el of document.querySelectorAll('[data-control-name*="photo"], [aria-label*="Photo"], [aria-label*="photo"]')) {
-      const r = el.getBoundingClientRect();
-      if (r.width > 0) return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-    }
-    return null;
-  });
 
-  console.log('Photo button:', photoCoords);
-  if (photoCoords) {
-    await page.mouse.click(photoCoords.x, photoCoords.y);
-    await page.waitForTimeout(2500);
-    await page.screenshot({ path: 'D:\\syeda Gulzar Bano\\Quarter5-Assignment\\Q5-Assignment\\p3_photo_clicked.png' });
+    let photoClicked = false;
+    for (const btn of photoBtns) {
+      try {
+        await btn.click({ timeout: 3000 });
+        photoClicked = true;
+        console.log('[POST]   Photo button clicked ✓');
+        break;
+      } catch {}
+    }
+
+    if (!photoClicked) console.log('[POST]   WARNING: photo button not found');
+    await page.waitForTimeout(2000);
+
+    // Set file via file input
+    const fileInput = page.locator('input[type="file"]').first();
+    try {
+      await fileInput.waitFor({ timeout: 5000 });
+      await fileInput.setInputFiles(IMAGE_PATH);
+      console.log('[POST]   Image set via file input ✓');
+      await page.waitForTimeout(9000);
+      await ss(page, 'p3_image');
+    } catch {
+      console.log('[POST]   WARNING: file input not found — skipping image');
+    }
+
+    // Click Next/Done if present
+    for (const label of ['Next', 'Done']) {
+      try {
+        const btn = page.getByRole('button', { name: label, exact: true });
+        await btn.click({ timeout: 3000 });
+        console.log(`[POST]   "${label}" clicked ✓`);
+        await page.waitForTimeout(3000);
+        await ss(page, 'p4_after_next');
+        break;
+      } catch {}
+    }
   }
 
-  const fileInput = await page.$('input[type="file"]');
-  if (fileInput) {
-    await fileInput.setInputFiles(IMAGE_PATH);
-    console.log('Image uploaded!');
-    await page.waitForTimeout(6000);
-    await page.screenshot({ path: 'D:\\syeda Gulzar Bano\\Quarter5-Assignment\\Q5-Assignment\\p4_image_loaded.png' });
+  // 5. Click Post button
+  console.log('[POST] Clicking Post button...');
+  await page.waitForTimeout(1000);
+
+  let posted = false;
+  try {
+    await page.getByRole('button', { name: 'Post', exact: true }).click({ timeout: 5000 });
+    posted = true;
+    console.log('[POST]   Post button clicked ✓');
+  } catch {}
+
+  if (!posted) {
+    // Fallback: find button with text "Post"
+    try {
+      await page.locator('button:has-text("Post"):not(:has-text("repost")):not(:has-text("Repost"))').last().click({ timeout: 5000 });
+      posted = true;
+      console.log('[POST]   Post button clicked via fallback ✓');
+    } catch {}
+  }
+
+  await page.waitForTimeout(9000);
+  await ss(page, 'p5_posted');
+
+  if (posted) {
+    console.log('\n[POST] ✓ SUCCESS — post published! Check p5_posted.png');
   } else {
-    console.log('WARNING: file input not found — image not attached');
+    console.log('\n[POST] ✗ Post button not found. Check p5_posted.png');
+    process.exit(1);
   }
 
-  // Click Done/Next if present
-  const doneCoords = await page.evaluate(() => {
-    for (const btn of document.querySelectorAll('button')) {
-      const txt = btn.textContent.trim();
-      if (txt === 'Done' || txt === 'Next') {
-        const r = btn.getBoundingClientRect();
-        if (r.width > 0) return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-      }
-    }
-    return null;
-  });
-  if (doneCoords) {
-    console.log('Clicking Done/Next...');
-    await page.mouse.click(doneCoords.x, doneCoords.y);
-    await page.waitForTimeout(2500);
-    await page.screenshot({ path: 'D:\\syeda Gulzar Bano\\Quarter5-Assignment\\Q5-Assignment\\p5_after_next.png' });
-  }
-
-  // Click Post button
-  const postCoords = await page.evaluate(() => {
-    for (const btn of document.querySelectorAll('button')) {
-      const txt = btn.textContent.trim();
-      const lbl = btn.getAttribute('aria-label') || '';
-      if (txt === 'Post' || lbl === 'Post') {
-        const r = btn.getBoundingClientRect();
-        if (r.width > 0) return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-      }
-    }
-    return null;
-  });
-
-  console.log('Post button:', postCoords);
-  if (postCoords) {
-    await page.mouse.click(postCoords.x, postCoords.y);
-    await page.waitForTimeout(7000);
-    await page.screenshot({ path: 'D:\\syeda Gulzar Bano\\Quarter5-Assignment\\Q5-Assignment\\p6_posted.png' });
-    console.log('\nSUCCESS! Post published! See p6_posted.png');
-  } else {
-    console.log('ERROR: Post button not found');
-    await page.screenshot({ path: 'D:\\syeda Gulzar Bano\\Quarter5-Assignment\\Q5-Assignment\\p6_error.png' });
-  }
-
-  await page.waitForTimeout(4000);
+  await page.waitForTimeout(2000);
   await browser.close();
-})().catch(async (err) => {
-  console.error('ERROR:', err.message);
+
+})().catch(err => {
+  console.error('\n[POST] FATAL:', err.message);
   process.exit(1);
 });
